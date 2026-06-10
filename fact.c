@@ -10,5 +10,3 @@ void factorial() {
     }
     printf("Factorial of %d is %d\n", n, fact);
 }
-
-
