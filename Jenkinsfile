@@ -1,44 +1,33 @@
 pipeline {
     agent any
-
+    environment {
+        AWS_REGION = "ap-south-1"
+        ECR_REPO = "146727531327.dkr.ecr.ap-south-1.amazonaws.com/testproject"
+        IMAGE_TAG = "latest"
+    }
     stages {
         stage('Checkout') {
             steps {
-                retry(2) {
-                    git branch: 'main', url: 'https://github.com/Ayansh14/C-Project.git'
-                }
+                git branch: 'main', url: 'https://github.com/Ayansh14/C-Project.git'
             }
         }
-
-        stage('Build') {
+        stage('Login to ECR') {
             steps {
-                sh 'make'
+                sh '''
+                aws ecr get-login-password --region $AWS_REGION \
+                | docker login --username AWS --password-stdin $ECR_REPO
+                '''
             }
         }
-
-        stage('Docker Build') {
+        stage('Build Docker Image') {
             steps {
-                sh 'docker build -t myimage .'
+                sh 'docker build -t $ECR_REPO:$IMAGE_TAG .'
             }
         }
-
         stage('Push to ECR') {
             steps {
-                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding',
-                                  credentialsId: 'aws-creds']]) {
-                    sh '''
-                    aws ecr get-login-password --region ap-south-1 | \
-                    docker login --username AWS --password-stdin 146727531327.dkr.ecr.ap-south-1.amazonaws.com
-                    docker tag myimage:latest 146727531327.dkr.ecr.ap-south-1.amazonaws.com/testproject:latest
-                    docker push 146727531327.dkr.ecr.ap-south-1.amazonaws.com/testproject:latest
-                    '''
-                }
+                sh 'docker push $ECR_REPO:$IMAGE_TAG'
             }
         }
-    }
-
-    post {
-        success { echo "Build and push succeeded!" }
-        failure { echo "Pipeline failed — check logs." }
     }
 }
