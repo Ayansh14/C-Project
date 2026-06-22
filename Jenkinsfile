@@ -1,33 +1,34 @@
 pipeline {
-    agent any
-    environment {
-        AWS_REGION = "ap-south-1"
-        ECR_REPO = "146727531327.dkr.ecr.ap-south-1.amazonaws.com/testproject"
-        IMAGE_TAG = "latest"
+    agent {
+        label 'your-agent'
+        retries 2   // retry agent allocation if non-resumable
     }
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/Ayansh14/C-Project.git'
+                // Wrap git in retry to handle non-resumable error
+                retry(2) {
+                    git branch: 'main', url: 'https://github.com/Ayansh14/C-Project.git'
+                }
             }
         }
-        stage('Login to ECR') {
+        stage('Build') {
             steps {
-                sh '''
-                aws ecr get-login-password --region $AWS_REGION \
-                | docker login --username AWS --password-stdin $ECR_REPO
-                '''
+                sh 'make'
             }
         }
-        stage('Build Docker Image') {
+        stage('Docker Build') {
             steps {
-                sh 'docker build -t $ECR_REPO:$IMAGE_TAG .'
+                sh 'docker build -t myimage .'
             }
         }
         stage('Push to ECR') {
             steps {
-                sh 'docker push $ECR_REPO:$IMAGE_TAG'
+                sh 'docker push 146727531327.dkr.ecr.ap-south-1.amazonaws.com/testproject'
             }
         }
     }
 }
+
+             
+        
